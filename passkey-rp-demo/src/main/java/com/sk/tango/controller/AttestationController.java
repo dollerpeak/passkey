@@ -1,0 +1,130 @@
+/*
+ * Copyright (C) 2023 SK TELECOM CO., LTD.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.sk.tango.controller;
+
+import com.sk.tango.mapper.registration.AttestationOptionsServerRequestMapper;
+import com.sk.tango.model.WebAuthnServerResponse;
+import com.sk.tango.model.transport.AttestationOptions;
+import com.sk.tango.model.transport.AttestationOptionsServerRequest;
+import com.sk.tango.model.transport.AttestationOptionsServerResponse;
+import com.sk.tango.model.transport.AttestationResponse;
+import com.sk.tango.model.transport.AuthenticatorResponseServerRequest;
+import com.sk.tango.model.transport.ServerResponse;
+import com.sk.tango.model.transport.Status;
+import com.sk.tango.model.transport.lv3.AttestationOptionsServerRequestLv3;
+import com.sk.tango.model.transport.lv3.AttestationResponseLv3;
+import com.sk.tango.model.transport.lv3.AuthenticatorResponseServerRequestLv3;
+import com.sk.tango.service.AttestationService;
+import com.sk.tango.util.CookieUtil;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * A controller for registration process
+ */
+@RequiredArgsConstructor
+@RestController
+@Slf4j
+public class AttestationController {
+    private static final String COOKIE_NAME = "attestation_request_id";
+    private final AttestationService attestationService;
+
+    /**
+     * For conformance testing purpose
+     */
+    @PostMapping(path = "/attestation/options")
+    AttestationOptionsServerResponse registrationChallenge(
+        @Valid @RequestBody AttestationOptionsServerRequest request, HttpServletResponse httpServletResponse) {
+        WebAuthnServerResponse<AttestationOptions> optionsResponse = attestationService.getOptions(request);
+        AttestationOptions options = optionsResponse.getOptions();
+        // set cookie to track request and subsequent response
+        CookieUtil.addCookie(httpServletResponse, COOKIE_NAME, optionsResponse.getSessionId());
+        return convert(options);
+    }
+
+    /**
+     * For conformance testing purpose
+     */
+    @PostMapping(path = "/attestation/result")
+    ServerResponse registrationResponse(@CookieValue(name = COOKIE_NAME) String requestId,
+        @Valid @RequestBody AuthenticatorResponseServerRequest<AttestationResponse> result) {
+        attestationService.handleResult(result, requestId);
+        return new ServerResponse(Status.OK, "");
+    }
+
+    /**
+     * Handler to start WebAuthn registration process
+     * @param request parameters for registration options, you may use your own model,
+     *                most of the cases, such values are populated in the backend.
+     *                Username and user id values should be obtained from the authenticated session.
+     *                For simplicity, this sample application generates the user id with username.
+     *                In general, the services might have their own user identifier.
+     *                The user id generation for the sample application is handled during model mapping.
+     *                Check this {@link AttestationOptionsServerRequestMapper#toWebauthnUserDto(AttestationOptionsServerRequestLv3 rpServer) model mapper }.
+     * @param httpServletResponse servlet response
+     * @return registration options
+     */
+    @PostMapping(path = "/lv3/attestation/options")
+    AttestationOptionsServerResponse registrationChallengeLv3(
+        @Valid @RequestBody AttestationOptionsServerRequestLv3 request, HttpServletResponse httpServletResponse) {
+        WebAuthnServerResponse<AttestationOptions> optionsResponse = attestationService.getLv3Options(request);
+        AttestationOptions options = optionsResponse.getOptions();
+
+        // You might have different way to manage the WebAuthn registration session (transaction)
+        // set cookie to track request and subsequent response for simplicity
+        CookieUtil.addCookie(httpServletResponse, COOKIE_NAME, optionsResponse.getSessionId());
+        return convert(options);
+    }
+
+    /**
+     * Handler for handling registration response from the client
+     * @param requestId session id indicating the corresponding registration option
+     * @param result registration response from the client
+     * @return registration result, you may use your own model
+     */
+    @PostMapping(path = "/lv3/attestation/result")
+    ServerResponse registrationResponseLv3(@CookieValue(name = COOKIE_NAME) String requestId,
+        @Valid @RequestBody AuthenticatorResponseServerRequestLv3<AttestationResponseLv3> result) {
+        attestationService.handleLv3Result(result, requestId);
+        return new ServerResponse(Status.OK, "");
+    }
+
+    private AttestationOptionsServerResponse convert(AttestationOptions options) {
+        if (options != null) {
+            // @formatter:off
+            return AttestationOptionsServerResponse.builder()
+                .rp(options.getRp())
+                .user(options.getUser())
+                .challenge(options.getChallenge())
+                .pubKeyCredParams(options.getPubKeyCredParams())
+                .timeout(options.getTimeout())
+                .excludeCredentials(options.getExcludeCredentials())
+                .authenticatorSelection(options.getAuthenticatorSelection())
+                .attestation(options.getAttestation())
+                .extensions(options.getExtensions())
+                .build();
+            // @formatter:on
+        }
+        return null;
+    }
+}

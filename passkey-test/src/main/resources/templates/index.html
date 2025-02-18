@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- <html lang="en" xmlns:th="http://www.thymeleaf.org"> -->
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+
+	<script src="/lib/code.jquery.com_jquery-3.7.0.min.js"></script>
+</head>
+
+<body>
+	<h1>index html</h1>
+	<hr>
+
+	<div>
+		<p>client id, pw, url</p>
+		<button id="btn-getoauthtoken">getOAuthToken</button>
+	</div>
+	<hr>
+
+	<div>
+		<button id="btn-ing">inginging</button>
+	</div>
+	<hr>
+
+	<div>
+		<button>2222</button>
+	</div>
+	<hr>
+
+	<div>
+		<button>2222</button>
+	</div>
+	<hr>
+
+	<script>
+		$(document).ready(function () {
+			init();
+			setEventListener();
+		});
+
+		function init() {
+			//
+		}
+
+		function setEventListener() {
+				$("#btn-getoauthtoken").click(function () {
+					console.log("getOAuthToken ===>");
+
+					// 로그인을 한 대상이므로 id, pw, email 등과 같이 사용자 정보가 넘어가야 한다.
+					let userInfo = {
+						id: "P088454",
+						email: "kobold77@empas.com",
+						name: "권헌태"
+					}
+
+					$.ajax({
+						method: "POST",
+						url: "/oauth2/getoken",
+						data: userInfo,
+					}).done(function (res) {
+						console.log(res)
+					}).fail(function (res) {
+						console.log("getOAuthToken error!")
+					});
+				});
+				
+				
+				
+		}
+
+
+        // $("#btn-getoauthtoken").click(function () {
+        //     console.log("get OAuth Token");
+
+        //     let form = {
+        //         displayName: "권헌태",
+        //         username: "kobold77@empas.com",
+        //         attestation: "direct",
+        //         authenticatorSelection: { authenticatorAttachment: "cross-platform" }
+        //     }
+
+        //     $.ajax({
+        //         url: "http://localhost:8081/registration/request",
+        //         type: "POST",
+        //         data: form,
+        //         success: function (data) {
+
+        //         },
+        //         error: function () {
+
+        //         }
+
+        //     })
+        // });
+
+
+	</script>
+
+
+</body>
+
+</html>
